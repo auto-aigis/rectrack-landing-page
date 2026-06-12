@@ -1,57 +1,42 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import type { User } from '@/app/_lib/types';
 import { authApi } from '@/app/_lib/api';
-import type { User, Subscription } from '@/app/_lib/types';
 
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  subscription: Subscription | null;
-  refresh: () => Promise<void>;
-  logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<
+  | {
+      user: User | null;
+      loading: boolean;
+      refresh: () => Promise<void>;
+      logout: () => Promise<void>;
+    }
+  | undefined
+>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
-      const [userData, subData] = await Promise.all([
-        authApi.me().catch(() => null),
-        authApi.subscription().catch(() => null),
-      ]);
-      setUser(userData);
-      setSubscription(subData);
+      const data = await authApi.me();
+      setUser(data);
     } catch {
       setUser(null);
-      setSubscription(null);
     }
-  };
+  }, []);
 
-  const logout = async () => {
-    await authApi.logout();
-    setUser(null);
-    setSubscription(null);
-  };
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+      setUser(null);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     refresh().finally(() => setLoading(false));
-  }, []);
+  }, [refresh]);
 
-  return (
-    <AuthContext.Provider value={{ user, loading, subscription, refresh, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
+  return <AuthContext.Provider value={{ user, loading, refresh, logout }}>{children}</AuthContext.Provider>;
 }

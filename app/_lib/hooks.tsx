@@ -1,57 +1,44 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authApi } from './api';
-import type { User, Subscription } from './types';
+import { useCallback, useContext, useEffect, useState } from 'react';
+import { AuthContext } from '@/app/_components/AuthProvider';
 
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  subscription: Subscription | null;
-  refresh: () => Promise<void>;
-  logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const refresh = async () => {
-    try {
-      const [userData, subData] = await Promise.all([
-        authApi.me().catch(() => null),
-        authApi.subscription().catch(() => null),
-      ]);
-      setUser(userData);
-      setSubscription(subData);
-    } catch {
-      setUser(null);
-      setSubscription(null);
-    }
-  };
-
-  const logout = async () => {
-    await authApi.logout();
-    setUser(null);
-    setSubscription(null);
-  };
-
-  useEffect(() => {
-    refresh().finally(() => setLoading(false));
-  }, []);
-
-  return (
-    <AuthContext.Provider value={{ user, loading, subscription, refresh, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
-}
+};
+
+export const useDebounce = <T,>(value: T, delay: number): T => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
+export const useLocalStorage = <T,>(key: string, initialValue: T): [T, (value: T) => void] => {
+  const [storedValue, setStoredValue] = useState<T>(initialValue);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const item = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
+    if (item) setStoredValue(JSON.parse(item));
+    setMounted(true);
+  }, [key]);
+
+  const setValue = useCallback(
+    (value: T) => {
+      setStoredValue(value);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(key, JSON.stringify(value));
+      }
+    },
+    [key]
+  );
+
+  return [mounted ? storedValue : initialValue, setValue];
+};

@@ -1,151 +1,139 @@
-'use client';
+"use client";
 
-export const dynamic = 'force-dynamic';
-
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, ExternalLink, Save } from 'lucide-react';
-import { profileApi, paddleApi } from '@/app/_lib/api';
-import { useAuth } from '@/app/_components/AuthProvider';
-import type { User } from '@/app/_lib/types';
+import { settingsApi, onboardingApi } from '@/app/_lib/api';
+import { useAuth } from '@/app/_lib/hooks';
+import type { Sport } from '@/app/_lib/types';
 
 export default function SettingsPage() {
-  const [displayName, setDisplayName] = useState('');
+  const { user, refresh } = useAuth();
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [primarySport, setPrimarySport] = useState('');
   const [position, setPosition] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [portalUrl, setPortalUrl] = useState('');
-  const { user, subscription, refresh } = useAuth();
+  const [apiKey, setApiKey] = useState('');
+  const [masked, setMasked] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    if (user) {
-      setDisplayName(user.display_name || '');
-      setPosition(user.position || '');
-    }
-  }, [user]);
+    loadSports();
+    loadSettings();
+  }, []);
+
+  const loadSports = async () => {
+    try {
+      const data = await onboardingApi.getSports();
+      setSports(data.sports);
+    } catch {}
+  };
+
+  const loadSettings = async () => {
+    try {
+      const data = await settingsApi.get();
+      setPrimarySport(data.primary_sport || '');
+      setPosition(data.position || '');
+      setMasked(!!data.api_keys?.openai);
+    } catch {}
+  };
 
   const handleSave = async () => {
-    setSaving(true);
-    setMessage('');
+    setError('');
+    setSuccess('');
+    setLoading(true);
     try {
-      await profileApi.update({ display_name: displayName, position });
+      await settingsApi.update(primarySport || undefined, position || undefined, apiKey || undefined);
+      setSuccess('Settings updated!');
+      setApiKey('');
       await refresh();
-      setMessage('Profile updated successfully');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Failed to update');
+      setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  const handleManageSubscription = async () => {
-    try {
-      const { portal_url } = await paddleApi.portalUrl();
-      window.location.href = portal_url;
-    } catch {
-      setMessage('No active subscription to manage');
-    }
-  };
-
-  const positions = [
-    { value: 'singles', label: 'Singles' },
-    { value: 'doubles-left', label: 'Doubles - Left Side' },
-    { value: 'doubles-right', label: 'Doubles - Right Side' },
-    { value: 'mixed', label: 'Mixed Doubles' },
-  ];
-
-  const tierLabel = subscription?.tier === 'plus'
-    ? 'RecTrack Plus'
-    : subscription?.tier === 'pro'
-    ? 'RecTrack Pro'
-    : 'RecTrack Free';
+  const currentSport = sports.find((s) => s.name === primarySport);
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
-        <p className="text-gray-600 mt-1">Manage your account and subscription</p>
-      </div>
-
-      {message && (
-        <Alert variant={message.includes('success') ? 'default' : 'destructive'}>
-          <AlertDescription>{message}</AlertDescription>
-        </Alert>
-      )}
-
+    <div className="max-w-2xl mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+      {error && <Alert className="border-red-200 bg-red-50"><AlertDescription className="text-red-800">{error}</AlertDescription></Alert>}
+      {success && <Alert className="border-green-200 bg-green-50"><AlertDescription className="text-green-800">{success}</AlertDescription></Alert>}
       <Card>
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Update your display name and position</CardDescription>
+          <CardTitle>Sport & Position</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" value={user?.email || ''} disabled />
+          <div>
+            <Label htmlFor="sport">Primary Sport</Label>
+            <Select value={primarySport} onValueChange={setPrimarySport}>
+              <SelectTrigger id="sport">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {sports.map((s) => (
+                  <SelectItem key={s.name} value={s.name}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="displayName">Display Name</Label>
-            <Input
-              id="displayName"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="position">Position</Label>
-            <select
-              id="position"
-              value={position}
-              onChange={(e) => setPosition(e.target.value)}
-              className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-gray-900"
-            >
-              <option value="">Select position</option>
-              {positions.map((pos) => (
-                <option key={pos.value} value={pos.value}>
-                  {pos.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Save Changes
-          </Button>
+          {currentSport && (
+            <div>
+              <Label htmlFor="position">Position</Label>
+              <Select value={position} onValueChange={setPosition}>
+                <SelectTrigger id="position">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {currentSport.positions.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </CardContent>
       </Card>
-
+      <Card>
+        <CardHeader>
+          <CardTitle>OpenAI API Key</CardTitle>
+          <CardDescription>Used to generate AI coaching tips</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {masked && !apiKey && <Alert><AlertDescription>API key is configured (masked for security)</AlertDescription></Alert>}
+          <div>
+            <Label htmlFor="apiKey">Key</Label>
+            <Input id="apiKey" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk_..." />
+          </div>
+          <p className="text-xs text-gray-600">Leave blank to keep current key</p>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Subscription</CardTitle>
-          <CardDescription>Manage your RecTrack subscription</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-gray-900">{tierLabel}</p>
-              {subscription?.current_period_end && (
-                <p className="text-sm text-gray-500">
-                  Renews {new Date(subscription.current_period_end).toLocaleDateString()}
-                </p>
-              )}
-              {subscription?.trial_ends_at && subscription.status === 'trialing' && (
-                <p className="text-sm text-blue-600">
-                  Trial ends {new Date(subscription.trial_ends_at).toLocaleDateString()}
-                </p>
-              )}
-            </div>
-            <Button variant="outline" onClick={handleManageSubscription}>
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Manage Subscription
-            </Button>
-          </div>
+        <CardContent>
+          <Link href="/settings/subscription">
+            <Button variant="outline">Manage Subscription</Button>
+          </Link>
         </CardContent>
       </Card>
+      <Button onClick={handleSave} disabled={loading} className="w-full">
+        {loading ? 'Saving...' : 'Save Changes'}
+      </Button>
     </div>
   );
 }

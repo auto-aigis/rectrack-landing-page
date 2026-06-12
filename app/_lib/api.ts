@@ -1,29 +1,3 @@
-import type {
-  User,
-  Subscription,
-  Game,
-  CreateGameRequest,
-  CoachingTip,
-  WeeklySummary,
-  SeasonSummary,
-  Achievement,
-  HistoryResponse,
-  CheckoutResponse,
-  VerifyTransactionResponse,
-  PortalUrlResponse,
-  UpgradeResponse,
-  OnboardingRequest,
-  ProfileUpdateRequest,
-  AuthResponse,
-  LogoutResponse,
-  RegisterResponse,
-  VerifyEmailResponse,
-  ResendVerificationResponse,
-  CsvExportResponse,
-  PregameTipResponse,
-  AchievementsResponse,
-} from './types';
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
@@ -35,6 +9,7 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     },
     ...options,
   });
+
   if (!res.ok) {
     let msg = `API error: ${res.status}`;
     try {
@@ -49,113 +24,85 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
   return res.json();
 }
 
+import type { User, Subscription, Game, AITip, DashboardData, WeeklyInsight, Sport, AnalyticsTrends, PercentileBadge, SeasonStats } from './types';
+
 export const authApi = {
-  register: (email: string, password: string, displayName?: string) =>
-    apiFetch<RegisterResponse>('/api/auth/register', {
+  register: (email: string, password: string, display_name: string) =>
+    apiFetch<{ status: string; email: string }>('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, display_name: displayName }),
+      body: JSON.stringify({ email, password, display_name }),
     }),
-
-  verifyEmail: (token: string) =>
-    apiFetch<VerifyEmailResponse>('/api/auth/verify-email', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    }),
-
-  resendVerification: (email: string) =>
-    apiFetch<ResendVerificationResponse>('/api/auth/resend-verification', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    }),
-
   login: (email: string, password: string) =>
-    apiFetch<User>('/api/auth/login', {
+    apiFetch<{ status: string; user: User }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
-
-  logout: () =>
-    apiFetch<LogoutResponse>('/api/auth/logout', { method: 'POST' }),
-
+  logout: () => apiFetch<{ status: string }>('/api/auth/logout', { method: 'POST' }),
   me: () => apiFetch<User>('/api/auth/me'),
-
-  subscription: () => apiFetch<Subscription>('/api/auth/subscription'),
+  verifyEmail: (token: string) =>
+    apiFetch<{ status: string }>('/api/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }),
+  resendVerification: (email: string) =>
+    apiFetch<{ status: string }>('/api/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  getSubscription: () => apiFetch<Subscription>('/api/auth/subscription'),
 };
 
-export const profileApi = {
-  update: (data: ProfileUpdateRequest) =>
-    apiFetch<User>('/api/profile', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
-
-  completeOnboarding: (data: OnboardingRequest) =>
-    apiFetch<AuthResponse>('/api/onboarding', {
+export const onboardingApi = {
+  getSports: () => apiFetch<{ sports: Sport[] }>('/api/onboarding/sports'),
+  saveSport: (primary_sport: string, position: string) =>
+    apiFetch<{ status: string; sport: string; position: string }>('/api/onboarding', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ primary_sport, position }),
     }),
 };
 
 export const gamesApi = {
-  create: (game: CreateGameRequest) =>
+  list: (skip: number = 0, limit: number = 10) =>
+    apiFetch<{ games: Game[] }>(`/api/games?skip=${skip}&limit=${limit}`),
+  create: (sport: string, result: 'W' | 'L', opponent_name: string | null, feeling_notes: string | null, stats: Record<string, number>) =>
     apiFetch<Game>('/api/games', {
       method: 'POST',
-      body: JSON.stringify(game),
+      body: JSON.stringify({ sport, result, opponent_name, feeling_notes, stats }),
     }),
-
-  list: (limit?: number) =>
-    apiFetch<Game[]>('/api/games' + (limit ? `?limit=${limit}` : '')),
-
-  get: (gameId: string) =>
-    apiFetch<Game>(`/api/games/${gameId}`),
-
-  getHistory: (offset?: number, limit?: number) => {
-    const params = new URLSearchParams();
-    if (offset) params.set('offset', String(offset));
-    if (limit) params.set('limit', String(limit));
-    return apiFetch<HistoryResponse>(`/api/history?${params.toString()}`);
-  },
-
-  exportCsv: () =>
-    apiFetch<CsvExportResponse>('/api/games/export/csv'),
+  get: (gameId: string) => apiFetch<Game>(`/api/games/${gameId}`),
+  getInsight: (gameId: string) => apiFetch<AITip>(`/api/games/${gameId}/insight`),
 };
 
-export const tipsApi = {
-  latest: () => apiFetch<CoachingTip>('/api/tips/latest'),
-
-  pregame: () =>
-    apiFetch<PregameTipResponse>('/api/tips/pregame', { method: 'POST' }),
-
-  weeklySummary: () =>
-    apiFetch<WeeklySummary>('/api/tips/weekly-summary'),
-
-  seasonSummary: (seasonId?: string) =>
-    apiFetch<SeasonSummary>('/api/season-summary', {
-      method: 'POST',
-      body: JSON.stringify({ season_id: seasonId }),
-    }),
+export const dashboardApi = {
+  getData: () => apiFetch<DashboardData>('/api/dashboard'),
 };
 
-export const achievementsApi = {
-  list: () => apiFetch<AchievementsResponse>('/api/achievements'),
+export const analyticsApi = {
+  getTrends: () => apiFetch<AnalyticsTrends>('/api/analytics/trends'),
+  getPercentiles: () => apiFetch<{ badges: PercentileBadge[] }>('/api/analytics/percentiles'),
+  getSeason: () => apiFetch<SeasonStats>('/api/analytics/season'),
+};
+
+export const weeklyApi = {
+  get: () => apiFetch<WeeklyInsight>('/api/weekly-insights'),
+  generate: () => apiFetch<WeeklyInsight>('/api/weekly-insights/generate', { method: 'POST' }),
+};
+
+export const settingsApi = {
+  get: () => apiFetch<{ primary_sport: string; position: string; api_keys: Record<string, string> }>('/api/settings'),
+  update: (primary_sport?: string, position?: string, api_key_openai?: string) =>
+    apiFetch<{ status: string }>('/api/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ primary_sport, position, api_key_openai }),
+    }),
+  getSubscription: () => apiFetch<Subscription>('/api/settings/subscription'),
 };
 
 export const paddleApi = {
-  checkout: (tier: string, billingInterval?: string) =>
-    apiFetch<CheckoutResponse>('/api/paddle/checkout', {
+  checkout: (tier: 'pro' | 'elite') =>
+    apiFetch<{ checkout_url: string }>('/api/paddle/checkout', {
       method: 'POST',
-      body: JSON.stringify({ tier, billing_interval: billingInterval }),
+      body: JSON.stringify({ tier }),
     }),
-
-  portalUrl: () =>
-    apiFetch<PortalUrlResponse>('/api/paddle/portal-url'),
-
-  verifyTransaction: (transactionId: string) =>
-    apiFetch<VerifyTransactionResponse>('/api/paddle/verify-transaction', {
-      method: 'POST',
-      body: JSON.stringify({ transaction_id: transactionId }),
-    }),
-
-  upgrade: () =>
-    apiFetch<UpgradeResponse>('/api/paddle/upgrade', { method: 'POST' }),
+  portal: () => apiFetch<{ portal_url: string }>('/api/paddle/portal'),
 };
