@@ -1,1 +1,1 @@
-export const NotAPage = null;
+export default null;
