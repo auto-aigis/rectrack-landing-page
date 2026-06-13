@@ -22,6 +22,8 @@ const conflictingFiles = [
   'app/(protected)/layout.tsx',
   'app/(protected)/log/page.tsx',
   'app/(protected)/onboarding/page.tsx',
+  'app/(protected)/settings/page.tsx',
+  'app/(protected)/settings/subscription/page.tsx',
   'app/(protected)/upgrade/page.tsx',
   // (authenticated) duplicate pages to remove
   'app/(authenticated)/onboarding/page.tsx',
