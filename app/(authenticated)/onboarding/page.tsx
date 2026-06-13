@@ -1,3 +1,1 @@
-export default function OnboardingPage() {
-  return <div>Onboarding</div>;
-}
+// Deprecated - removed to prevent route conflicts
