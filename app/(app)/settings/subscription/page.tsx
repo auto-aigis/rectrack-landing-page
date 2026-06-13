@@ -1,84 +1,85 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AppShell } from '@/app/_components/AppShell';
 import { settingsApi, paddleApi } from '@/app/_lib/api';
-import { useAuth } from '@/app/_lib/hooks';
 import type { Subscription } from '@/app/_lib/types';
 
 export default function SubscriptionPage() {
-  const { user } = useAuth();
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const router = useRouter();
+  const [sub, setSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [portal, setPortal] = useState('');
+  const [portalLoading, setPortalLoading] = useState(false);
 
-  useEffect(() => {
-    loadSubscription();
-  }, []);
-
-  const loadSubscription = async () => {
-    try {
-      const data = await settingsApi.getSubscription();
-      setSubscription(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => { settingsApi.getSubscription().then(setSub).catch(() => {}).finally(() => setLoading(false)); }, []);
 
   const handlePortal = async () => {
-    try {
-      const data = await paddleApi.portal();
-      window.open(data.portal_url, '_blank');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to open portal');
-    }
+    setPortalLoading(true);
+    try { window.open((await paddleApi.portal()).portal_url, '_blank'); }
+    catch { alert('Unable to open billing portal.'); }
+    finally { setPortalLoading(false); }
   };
 
-  if (loading) return <div className="max-w-2xl mx-auto p-6">Loading...</div>;
+  const handleUpgrade = async (tier: 'pro' | 'elite') => {
+    try { window.location.href = (await paddleApi.checkout(tier)).checkout_url; } catch {}
+  };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Subscription</h1>
-        <p className="text-gray-600">Manage your billing and plan</p>
-      </div>
-      {error && <Alert className="border-red-200 bg-red-50"><AlertDescription className="text-red-800">{error}</AlertDescription></Alert>}
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Plan</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <p className="text-sm text-gray-600">Tier</p>
-            <Badge className="capitalize mt-1">{subscription?.tier}</Badge>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Status</p>
-            <p className="font-medium text-gray-900 mt-1 capitalize">{subscription?.status}</p>
-          </div>
-          {subscription?.current_period_end && (
-            <div>
-              <p className="text-sm text-gray-600">Renews on</p>
-              <p className="font-medium text-gray-900 mt-1">{new Date(subscription.current_period_end).toLocaleDateString()}</p>
+    <AppShell>
+      <div className="p-4 md:p-6 max-w-lg mx-auto space-y-5">
+        <div className="flex items-center gap-3">
+          <button onClick={() => router.back()} className="text-gray-500 hover:text-gray-700"><ArrowLeft className="w-5 h-5" /></button>
+          <h1 className="text-xl font-bold text-gray-900">Subscription</h1>
+        </div>
+        {loading ? <div className="flex justify-center h-32 items-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" /></div> : (
+          <>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Current Plan</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold capitalize text-gray-900">{sub?.tier || 'free'} Plan</span>
+                  <Badge className={sub?.tier === 'elite' ? 'bg-purple-100 text-purple-700' : sub?.tier === 'pro' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}>
+                    {sub?.status || 'active'}
+                  </Badge>
+                </div>
+                {sub?.current_period_end && <p className="text-sm text-gray-500">Renews {new Date(sub.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>}
+                {sub?.paddle_subscription_id && (
+                  <Button onClick={handlePortal} disabled={portalLoading} variant="outline" className="w-full gap-2">
+                    <ExternalLink className="w-4 h-4" />{portalLoading ? 'Opening...' : 'Manage Billing'}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+            <div className="space-y-3">
+              <h2 className="font-semibold text-gray-900">Plans</h2>
+              {([['free','$0','Free',['5 games/month','No AI tips']],['pro','$12/mo','Pro',['Unlimited games','AI coaching tips','Trends & weekly insights']],['elite','$24/mo','Elite',['Everything in Pro','Season comparison','Percentile rankings']]] as const).map(([tier, price, label, features]) => (
+                <Card key={tier} className={sub?.tier === tier ? 'border-green-500 ring-1 ring-green-500' : ''}>
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{label}</span>
+                        {sub?.tier === tier && <Badge className="bg-green-100 text-green-700">Current</Badge>}
+                      </div>
+                      <span className="font-bold">{price}</span>
+                    </div>
+                    <ul className="space-y-1">{features.map((f) => <li key={f} className="text-sm text-gray-600 flex items-center gap-1"><span className="text-green-500">✓</span>{f}</li>)}</ul>
+                    {sub?.tier !== tier && tier !== 'free' && (
+                      <Button onClick={() => handleUpgrade(tier)} size="sm" className={`mt-3 w-full ${tier === 'elite' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-green-600 hover:bg-green-700'}`}>
+                        Upgrade to {label}
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
-      <Button onClick={handlePortal} className="w-full">
-        Manage via Paddle
-      </Button>
-      <Link href="/pricing">
-        <Button variant="outline" className="w-full">
-          View Plans
-        </Button>
-      </Link>
-    </div>
+          </>
+        )}
+      </div>
+    </AppShell>
   );
 }

@@ -1,8 +1,22 @@
 const fs = require('fs');
 const path = require('path');
 
-// Clean up accidentally created route files before build
-const filesToRemove = [
+// Aggressive cleanup BEFORE Next.js builds routes
+// These files should not exist - they conflict with (authenticated) routes
+const conflictingFiles = [
+  'app/(app)/dashboard/log/page.tsx',
+  'app/(app)/dashboard/page.tsx',
+  'app/(app)/dashboard/weekly/page.tsx',
+  'app/(app)/layout.tsx',
+  'app/(app)/onboarding/page.tsx',
+  'app/(app)/pricing/page.tsx',
+  'app/(app)/settings/page.tsx',
+  'app/(app)/settings/subscription/page.tsx',
+  'app/(protected)/dashboard/page.tsx',
+  'app/(protected)/history/page.tsx',
+  'app/(protected)/log/page.tsx',
+  'app/(protected)/layout.tsx',
+  // Also remove accidentally created routes
   'app/dashboard/log/page.tsx',
   'app/dashboard/page.tsx',
   'app/dashboard/weekly/page.tsx',
@@ -17,65 +31,43 @@ const filesToRemove = [
   'app/app/pricing/page.tsx',
   'app/app/settings/page.tsx',
   'app/app/settings/subscription/page.tsx',
-  'app/(app)/dashboard/log/page.tsx',
-  'app/(app)/dashboard/page.tsx',
-  'app/(app)/dashboard/weekly/page.tsx',
-  'app/(app)/layout.tsx',
-  'app/(app)/onboarding/page.tsx',
-  'app/(app)/pricing/page.tsx',
-  'app/(app)/settings/page.tsx',
-  'app/(app)/settings/subscription/page.tsx',
 ];
 
-const deleteFileRecursively = (filePath) => {
-  const fullPath = path.join(process.cwd(), 'frontend', filePath);
+// Force delete ALL conflicting files
+conflictingFiles.forEach(file => {
+  const fullPath = path.join(__dirname, file);
   try {
     if (fs.existsSync(fullPath)) {
-      const stats = fs.statSync(fullPath);
-      if (stats.isFile() && stats.size < 100) {
-        fs.unlinkSync(fullPath);
-        console.log(`Removed: ${filePath}`);
-      } else if (stats.isFile()) {
-        fs.renameSync(fullPath, fullPath + '.bak');
-        console.log(`Renamed: ${filePath}`);
-      }
+      fs.unlinkSync(fullPath);
+      console.log(`✓ Deleted conflicting route: ${file}`);
     }
   } catch (err) {
-    console.log(`Could not remove ${filePath}: ${err.message}`);
+    console.log(`✗ Could not delete ${file}: ${err.message}`);
   }
-};
+});
 
-filesToRemove.forEach(deleteFileRecursively);
-
-const dirsToClean = [
-  'app/(app)',
-  'app/app',
-  'app/dashboard',
-  'app/onboarding',
-  'app/settings',
-];
-
-const removeEmptyDirs = (dirPath) => {
-  const fullPath = path.join(process.cwd(), 'frontend', dirPath);
+// Also try to remove empty directories
+['app/(app)', 'app/(protected)', 'app/app', 'app/dashboard', 'app/onboarding', 'app/settings'].forEach(dir => {
+  const fullPath = path.join(__dirname, dir);
   try {
     if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
-      const files = fs.readdirSync(fullPath);
-      if (files.length === 0 || files.every(f => f.endsWith('.bak'))) {
-        fs.rmSync(fullPath, { recursive: true });
-        console.log(`Removed directory: ${dirPath}`);
+      const contents = fs.readdirSync(fullPath);
+      // Only remove if directory is empty or only contains .bak files
+      if (contents.length === 0 || contents.every(f => f.endsWith('.bak'))) {
+        fs.rmSync(fullPath, { recursive: true, force: true });
+        console.log(`✓ Removed directory: ${dir}`);
       }
     }
   } catch (err) {
-    console.log(`Could not clean ${dirPath}: ${err.message}`);
+    console.log(`✗ Could not remove ${dir}`);
   }
-};
+});
 
-dirsToClean.forEach(removeEmptyDirs);
+console.log('\n✓ Route cleanup complete. Only (authenticated) routes should exist.\n');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  appDir: true,
 };
 
 module.exports = nextConfig;

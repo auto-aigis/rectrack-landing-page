@@ -1,73 +1,52 @@
+export interface Game {
+  id: string;
+  date: string;
+  sport: string;
+  position: string;
+  location?: string;
+  duration_minutes: number;
+  score: number;
+  opponent_score?: number;
+  performance_metrics: Record<string, number>;
+  notes?: string;
+  created_at: string;
+}
+
+export interface GameDetail extends Game {
+  ai_insight?: string;
+}
+
 export interface User {
   id: string;
   email: string;
-  display_name: string;
-  primary_sport: string | null;
-  position: string | null;
+  tier: 'free' | 'pro' | 'elite';
   onboarding_complete: boolean;
-  tier: 'free' | 'pro' | 'elite';
+  verified: boolean;
 }
 
-export interface Subscription {
-  tier: 'free' | 'pro' | 'elite';
-  status: string;
-  current_period_end: string | null;
-  paddle_subscription_id: string | null;
-}
-
-export interface Game {
-  id: string;
-  sport: string;
-  result: 'W' | 'L';
-  opponent_name: string | null;
-  feeling_notes: string | null;
-  stats: Record<string, number>;
-  logged_at: string;
-}
-
-export interface AITip {
-  id: string;
-  tip_type: 'post_game' | 'pre_game' | 'weekly';
-  content: string;
-  generated_at: string;
-}
-
-export interface DashboardData {
-  recent_games: Game[];
-  total_games: number;
-  win_rate: number;
-  current_streak: number;
-  pre_game_tip: AITip | null;
+export interface TrendData {
+  date: string;
+  metric: string;
+  value: number;
 }
 
 export interface WeeklyInsight {
-  id: string;
-  week_start: string;
-  week_end: string;
-  summary_content: string;
-  stats_snapshot: Record<string, any>;
-  generated_at: string;
+  week: string;
+  insights: string[];
+  highlights: string[];
+  areas_for_improvement: string[];
 }
 
-export interface Sport {
-  name: string;
-  positions: string[];
+export interface DashboardSummary {
+  total_games: number;
+  current_streak: number;
+  average_score: number;
+  favorite_sport: string;
+  recent_games: Game[];
 }
 
-export interface AnalyticsTrends {
-  dates: string[];
-  points_per_game: number[];
-  win_rate: number[];
-  error_rate: number[];
-}
-
-export interface PercentileBadge {
-  metric: string;
-  percentile: number;
-  label: string;
-}
-
-export interface SeasonStats {
-  this_year: { total_games: number; wins: number; win_rate: number };
-  last_year: { total_games: number; wins: number; win_rate: number };
+export interface SubscriptionInfo {
+  tier: 'free' | 'pro' | 'elite';
+  paddle_customer_id?: string;
+  status: 'active' | 'trialing' | 'past_due' | 'cancelled';
 }

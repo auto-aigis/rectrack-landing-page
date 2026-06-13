@@ -1,126 +1,73 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { Check, Zap, Trophy, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { paddleApi } from '@/app/_lib/api';
+import { AppShell } from '@/app/_components/AppShell';
 import { useAuth } from '@/app/_lib/hooks';
-import { Check } from 'lucide-react';
+import { paddleApi } from '@/app/_lib/api';
 
-const TIERS = [
-  {
-    name: 'Free',
-    price: '$0',
-    description: 'Get started',
-    features: [
-      'Log up to 5 games/month',
-      'Basic stats view',
-      'No AI coaching tips',
-      'No trend charts',
-    ],
-    tier: 'free',
-  },
-  {
-    name: 'Pro',
-    price: '$12',
-    period: '/month',
-    description: 'Most popular',
-    features: [
-      'Unlimited game logging',
-      'AI post-game coaching tips',
-      'Performance trend charts',
-      'Weekly AI insights',
-      'Pre-game prep tips',
-      'Logging streak tracking',
-    ],
-    tier: 'pro',
-    highlighted: true,
-  },
-  {
-    name: 'Elite',
-    price: '$24',
-    period: '/month',
-    description: 'Advanced features',
-    features: [
-      'Everything in Pro',
-      'Percentile rankings',
-      'Season-over-season comparison',
-      'Priority AI generation',
-      'Multi-sport tracking',
-      'Early access to new features',
-    ],
-    tier: 'elite',
-  },
+const PLANS = [
+  { tier: 'free' as const, name: 'Free', price: '$0', period: 'forever', icon: <Star className="w-5 h-5 text-gray-400" />, highlight: false,
+    features: ['5 games/month','Basic stat tracking','Win/loss history'], locked: ['AI coaching tips','Trend charts','Weekly insights'] },
+  { tier: 'pro' as const, name: 'Pro', price: '$12', period: '/month', icon: <Zap className="w-5 h-5 text-yellow-500" />, highlight: true,
+    features: ['Unlimited game logging','AI coaching tips (GPT-4o)','Performance trend charts','Weekly AI insights','All Free features'], locked: [] },
+  { tier: 'elite' as const, name: 'Elite', price: '$24', period: '/month', icon: <Trophy className="w-5 h-5 text-purple-500" />, highlight: false,
+    features: ['Everything in Pro','Season-over-season comparison','Percentile rankings vs all users','Multi-sport tracking'], locked: [] },
 ];
 
 export default function PricingPage() {
   const { user } = useAuth();
-  const [checkoutUrl, setCheckoutUrl] = useState<string>('');
-  const [loading, setLoading] = useState<string | null>(null);
-  const [error, setError] = useState('');
+  const [upgrading, setUpgrading] = useState<string | null>(null);
+  const currentTier = user?.tier || 'free';
 
-  const handleCheckout = async (tier: 'pro' | 'elite') => {
-    setLoading(tier);
-    setError('');
-    try {
-      const data = await paddleApi.checkout(tier);
-      window.location.href = data.checkout_url;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start checkout');
-    } finally {
-      setLoading(null);
-    }
+  const handleUpgrade = async (tier: 'pro' | 'elite') => {
+    setUpgrading(tier);
+    try { window.location.href = (await paddleApi.checkout(tier)).checkout_url; }
+    catch { setUpgrading(null); }
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-gray-900">Simple, Transparent Pricing</h1>
-        <p className="text-gray-600">Choose the plan that works for you</p>
+    <AppShell>
+      <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900">Choose Your Plan</h1>
+          <p className="text-gray-600 mt-1">Unlock AI coaching and advanced analytics</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {PLANS.map((plan) => (
+            <Card key={plan.tier} className={`relative border-2 ${plan.highlight ? 'border-green-500 shadow-lg' : 'border-gray-200'}`}>
+              {plan.highlight && <div className="absolute -top-3 left-1/2 -translate-x-1/2"><Badge className="bg-green-600 text-white px-3">Most Popular</Badge></div>}
+              <CardHeader className="pb-2 pt-6">
+                <div className="flex items-center gap-2 mb-1">{plan.icon}<CardTitle className="text-lg">{plan.name}</CardTitle></div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold text-gray-900">{plan.price}</span>
+                  <span className="text-gray-500 text-sm">{plan.period}</span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="space-y-2">
+                  {plan.features.map((f) => <li key={f} className="flex items-start gap-2 text-sm text-gray-700"><Check className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />{f}</li>)}
+                  {plan.locked?.map((f) => <li key={f} className="flex items-start gap-2 text-sm text-gray-400 line-through"><Check className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />{f}</li>)}
+                </ul>
+                {currentTier === plan.tier ? (
+                  <Button disabled variant="outline" className="w-full">Current Plan</Button>
+                ) : plan.tier === 'free' ? (
+                  <Button disabled variant="outline" className="w-full">Free Forever</Button>
+                ) : (
+                  <Button onClick={() => handleUpgrade(plan.tier)} disabled={upgrading !== null}
+                    className={`w-full ${plan.tier === 'elite' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-green-600 hover:bg-green-700'}`}>
+                    {upgrading === plan.tier ? 'Loading checkout...' : `Upgrade to ${plan.name}`}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <p className="text-center text-sm text-gray-500">Secure checkout powered by Paddle. Cancel anytime.</p>
       </div>
-      {error && <Alert className="border-red-200 bg-red-50"><AlertDescription className="text-red-800">{error}</AlertDescription></Alert>}
-      <div className="grid md:grid-cols-3 gap-6">
-        {TIERS.map((plan) => (
-          <Card key={plan.tier} className={plan.highlighted ? 'border-blue-500 border-2 md:scale-105' : ''}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>{plan.name}</CardTitle>
-                {plan.highlighted && <Badge>Popular</Badge>}
-              </div>
-              <CardDescription>{plan.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                {plan.period && <span className="text-gray-600">{plan.period}</span>}
-              </div>
-              <ul className="space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-gray-700">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              {plan.tier === 'free' ? (
-                <Button variant="outline" className="w-full" disabled>
-                  Current Plan
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => handleCheckout(plan.tier as 'pro' | 'elite')}
-                  disabled={loading === plan.tier}
-                  className="w-full"
-                >
-                  {loading === plan.tier ? 'Processing...' : 'Get ' + plan.name}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
+    </AppShell>
   );
 }

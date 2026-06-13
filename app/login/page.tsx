@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { authApi } from '@/app/_lib/api';
 import { useAuth } from '@/app/_lib/hooks';
 
@@ -27,18 +26,19 @@ export default function LoginPage() {
     setError('');
     setUnverified(false);
     setLoading(true);
-
     try {
       await authApi.login(email, password);
+      const user = await authApi.me();
       await refresh();
-      router.push('/dashboard');
+      if (!user.onboarding_complete) {
+        router.push('/onboarding');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed';
-      if (msg.includes('email_not_verified')) {
-        setUnverified(true);
-      } else {
-        setError(msg);
-      }
+      if (msg.includes('email_not_verified')) setUnverified(true);
+      else setError(msg);
     } finally {
       setLoading(false);
     }
@@ -50,7 +50,7 @@ export default function LoginPage() {
     try {
       await authApi.resendVerification(email);
       setResendDone(true);
-      setTimeout(() => setResendDone(false), 3000);
+      setTimeout(() => setResendDone(false), 4000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resend');
     } finally {
@@ -59,42 +59,55 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Sign In</CardTitle>
-          <CardDescription>Enter your email and password to access RecTrack</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            {error && <Alert className="border-red-200 bg-red-50"><AlertDescription className="text-red-800">{error}</AlertDescription></Alert>}
-            {unverified && <Alert className="border-amber-200 bg-amber-50"><AlertDescription className="text-amber-800">Please verify your email first</AlertDescription></Alert>}
-            {resendDone && <Alert className="border-green-200 bg-green-50"><AlertDescription className="text-green-800">Email sent! Check your inbox.</AlertDescription></Alert>}
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            </div>
-            {unverified && (
-              <Button onClick={handleResend} disabled={resending} variant="outline" className="w-full" type="button">
-                {resending ? 'Sending...' : 'Resend Verification Email'}
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-blue-50 px-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-6">
+          <span className="text-4xl">🏆</span>
+          <h1 className="text-2xl font-bold text-gray-900 mt-2">RecTrack</h1>
+          <p className="text-gray-500 text-sm">Track your sports performance</p>
+        </div>
+        <Card className="shadow-lg">
+          <CardHeader className="pb-3">
+            <CardTitle>Sign In</CardTitle>
+            <CardDescription>Enter your email and password</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              {error && <div className="bg-red-50 border border-red-200 text-red-800 text-sm rounded-lg p-3">{error}</div>}
+              {unverified && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg p-3">
+                  Please verify your email first.
+                </div>
+              )}
+              {resendDone && (
+                <div className="bg-green-50 border border-green-200 text-green-800 text-sm rounded-lg p-3">
+                  Verification email sent! Check your inbox.
+                </div>
+              )}
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-1" />
+              </div>
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="mt-1" />
+              </div>
+              {unverified && (
+                <Button onClick={handleResend} disabled={resending} variant="outline" className="w-full" type="button">
+                  {resending ? 'Sending...' : 'Resend Verification Email'}
+                </Button>
+              )}
+              <Button type="submit" disabled={loading} className="w-full bg-green-600 hover:bg-green-700">
+                {loading ? 'Signing in...' : 'Sign In'}
               </Button>
-            )}
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Button>
-            <p className="text-sm text-center text-gray-600">
-              Don't have an account?{' '}
-              <Link href="/register" className="text-blue-600 hover:underline">
-                Sign up
-              </Link>
-            </p>
-          </form>
-        </CardContent>
-      </Card>
+              <p className="text-sm text-center text-gray-600">
+                Don't have an account?{' '}
+                <Link href="/register" className="text-green-600 hover:underline font-medium">Sign up free</Link>
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

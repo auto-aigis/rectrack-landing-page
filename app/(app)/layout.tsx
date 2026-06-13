@@ -1,10 +1,6 @@
-import { AuthProvider } from '@/app/_components/AuthProvider';
-import { AppShell } from '@/app/_components/AppShell';
+import { AuthProvider } from '../_components/AuthProvider';
+import type { ReactNode } from 'react';
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthProvider>
-      <AppShell>{children}</AppShell>
-    </AuthProvider>
-  );
+export default function AppLayout({ children }: { children: ReactNode }) {
+  return <AuthProvider>{children}</AuthProvider>;
 }

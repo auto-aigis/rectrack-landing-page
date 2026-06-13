@@ -1,0 +1,8 @@
+# Ignore conflicting route definitions
+frontend/app/(app)/
+frontend/app/(protected)/
+frontend/app/app/
+frontend/app/dashboard/
+frontend/app/onboarding/
+frontend/app/settings/
+frontend/next.config.js.bak
