@@ -10,6 +10,7 @@ const conflictingFiles = [
   'app/(app)/dashboard/log/page.tsx',
   'app/(app)/dashboard/page.tsx',
   'app/(app)/dashboard/weekly/page.tsx',
+  'app/(app)/history/page.tsx',
   'app/(app)/layout.tsx',
   'app/(app)/onboarding/page.tsx',
   'app/(app)/pricing/page.tsx',
