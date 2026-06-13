@@ -1,2 +1,1 @@
-// DEPRECATED - do not use
-// This file is intentionally disabled
+export const NotLayout = null;
