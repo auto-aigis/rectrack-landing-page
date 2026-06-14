@@ -1,52 +1,68 @@
-export interface Game {
-  id: string;
-  date: string;
-  sport: string;
-  position: string;
-  location?: string;
-  duration_minutes: number;
-  score: number;
-  opponent_score?: number;
-  performance_metrics: Record<string, number>;
-  notes?: string;
-  created_at: string;
-}
-
-export interface GameDetail extends Game {
-  ai_insight?: string;
-}
-
 export interface User {
   id: string;
   email: string;
-  tier: 'free' | 'pro' | 'elite';
-  onboarding_complete: boolean;
-  verified: boolean;
+  display_name: string;
+  timezone: string;
+  sport: string;
+  position: string | null;
 }
 
-export interface TrendData {
-  date: string;
-  metric: string;
-  value: number;
+export interface Subscription {
+  id: string;
+  status: "active" | "inactive";
+  tier: "free" | "pro" | "elite";
+  current_period_end: string | null;
 }
 
-export interface WeeklyInsight {
-  week: string;
-  insights: string[];
-  highlights: string[];
-  areas_for_improvement: string[];
+export interface Game {
+  id: string;
+  user_id: string;
+  played_at: string;
+  sport: string;
+  position: string;
+  stats_json: Record<string, any>;
+  notes: string;
+  created_at: string;
 }
 
-export interface DashboardSummary {
-  total_games: number;
-  current_streak: number;
-  average_score: number;
-  favorite_sport: string;
+export interface DashboardData {
+  streak_weeks: number;
+  milestone_to_show: number | null;
   recent_games: Game[];
+  user: User;
+  subscription: Subscription;
 }
 
-export interface SubscriptionInfo {
-  tier: 'free' | 'pro' | 'elite';
-  paddle_customer_id?: string;
-  status: 'active' | 'trialing' | 'past_due' | 'cancelled';
+export interface AuthResponse {
+  user: User;
+  subscription: Subscription;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  display_name: string;
+  timezone: string;
+  sport: string;
+}
+
+export interface RegisterResponse {
+  status: string;
+  email: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse extends User {}
+
+export interface VerifyTransactionRequest {
+  transaction_id: string;
+}
+
+export interface VerifyTransactionResponse {
+  status: string;
+  tier: string;
 }
