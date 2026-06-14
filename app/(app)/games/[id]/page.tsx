@@ -31,7 +31,8 @@ export default function GamePage() {
     const load = async () => {
       try {
         const g = await gamesApi.get(id);
-        setGame(g);
+        setGame(g as any);
+
         setPlayedAt(g.played_at.split("T")[0]);
         setSport(g.sport);
         setPosition(g.position);
